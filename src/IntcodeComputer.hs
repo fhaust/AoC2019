@@ -23,7 +23,7 @@ step (p, inp, out, cs) = go (S.drop p cs)
 
     -- read and write input
     go (parse -> ([_,_,_,_,3], (c:_)  )) = (p + 2, tail inp, out,            write c (head inp))
-    go (parse -> ([_,_,x,_,4], (c:_)  )) = (p + 2, inp,      out ++ [mode x c], cs)
+    go (parse -> ([_,_,x,_,4], (c:_)  )) = (p + 2, inp,      mode x c : out, cs)
 
 
     -- add and multiply
@@ -60,7 +60,7 @@ digits = map digitToInt . printf "%05d"
 
 -- | run a program until it has reached a 99 opcode (or just crashed)
 run2halt :: [Int] -> IntCode -> ([Int], IntCode)
-run2halt input (IC prog) = (\(_,_,b,c) -> (b, IC . toList $ c))
+run2halt input (IC prog) = (\(_,_,b,c) -> (reverse b, IC . toList $ c))
                          . last
                          . takeWhile (\(p,_,_,_) -> p /= (-1))
                          . iterate step
