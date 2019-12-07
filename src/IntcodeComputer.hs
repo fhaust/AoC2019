@@ -7,11 +7,13 @@ import qualified Data.Sequence as S
 import           Data.Sequence (Seq (..))
 
 import           Data.Foldable
+import           Data.List.Split
 
 import           Text.Printf
 
 import           Data.Char
 
+newtype IntCode = IC { unIC :: [Int] } deriving Show
 
 step (p, inp, out, cs) = go (S.drop p cs)
   where
@@ -21,7 +23,7 @@ step (p, inp, out, cs) = go (S.drop p cs)
 
     -- read and write input
     go (parse -> ([_,_,_,_,3], (c:_)  )) = (p + 2, tail inp, out,            write c (head inp))
-    go (parse -> ([_,_,x,_,4], (c:_)  )) = (p + 2, inp,      mode x c : out, cs)
+    go (parse -> ([_,_,x,_,4], (c:_)  )) = (p + 2, inp,      out ++ [mode x c], cs)
 
 
     -- add and multiply
@@ -57,33 +59,24 @@ digits = map digitToInt . printf "%05d"
 
 
 -- | run a program until it has reached a 99 opcode (or just crashed)
-run2halt input prog = (\(_,_,b,c) -> (b, toList c))
-                    . last
-                    . takeWhile (\(p,_,_,_) -> p /= (-1))
-                    . iterate step
-                    $ (0, input, [], S.fromList prog)
+run2halt :: [Int] -> IntCode -> ([Int], IntCode)
+run2halt input (IC prog) = (\(_,_,b,c) -> (b, IC . toList $ c))
+                         . last
+                         . takeWhile (\(p,_,_,_) -> p /= (-1))
+                         . iterate step
+                         $ (0, input, [], S.fromList prog)
+
+-- | simple wrapper for run2halt that runs a program with multiple parameters
+--   and returns all results
+run2results :: [Int] -> IntCode -> [Int]
+run2results input prog = fst $ run2halt input prog
 
 -- | simple wrapper for run2halt that runs a program and returns its first result
-run2result input prog = head . fst $ run2halt [input] prog
+run2result :: [Int] -> IntCode -> Int
+run2result input prog = head $ run2results input prog
 
 
 
-
-
--- lot's of testing until this went right -.-
-
--- day 2 tests
-test1 = run2halt [1] [1,9,10,3,2,3,11,0,99,30,40,50] == ([], [3500,9,10,70,2,3,11,0,99,30,40,50])
-test2 = run2halt [1] [1,0,0,0,99] == ([], [2,0,0,0,99])
-test3 = run2halt [1] [2,3,0,3,99] == ([], [2,3,0,6,99])
-test4 = run2halt [1] [2,4,4,5,99,0] == ([], [2,4,4,5,99,9801])
-test5 = run2halt [1] [1,1,1,4,99,5,6,0,99] == ([], [30,1,1,4,2,5,6,0,99])
-
-
--- day 5 tests
-test6 = run2halt [1] [1002,4,3,4,33] == ([], [1002,4,3,4,99])
-
-prog7 = [3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31
-      , 1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104
-      , 999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99]
-test7 = quickCheck (\x -> (signum (run2result x prog7 - 1000)) == signum (x - 8))
+-- | "compile" inputs into IntCode
+compile :: String -> IntCode
+compile = IC .  map read . splitOn ","
