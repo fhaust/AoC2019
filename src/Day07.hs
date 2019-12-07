@@ -17,15 +17,22 @@ part1 prog = maximum [ runAmplifiers prog phases | phases <- permutations [0..4]
 
 -- PART 2
 
--- | run all "amplifiers" again ... but this time pipe the output of 
+-- | run all "amplifiers" again ... but this time pipe the output of
 --   the last one to the first one
-runAmplifierLoop prog [p0,p1,p2,p3,p4] = last r4
-  where
-    r0 = run2results (p0:0:r4) prog
-    r1 = run2results (p1:r0) prog
-    r2 = run2results (p2:r1) prog
-    r3 = run2results (p3:r2) prog
-    r4 = run2results (p4:r3) prog
+runAmplifierLoop prog phases = last out
+  where out = foldr (\p rs -> run2results (p : rs) prog) (0:out) (reverse phases)
+
+
+-- which is basically the short form of:
+-- runAmplifierLoop' prog [p0,p1,p2,p3,p4] = last r4
+--   where
+--     r0 = run2results (p0:0:r4) prog
+--     r1 = run2results (p1:r0) prog
+--     r2 = run2results (p2:r1) prog
+--     r3 = run2results (p3:r2) prog
+--     r4 = run2results (p4:r3) prog
+
+
 
 -- | again find the permutation that yields the highest output
 part2 prog = maximum [ runAmplifierLoop prog phases | phases <- permutations [5..9] ]
