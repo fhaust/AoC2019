@@ -1,7 +1,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 
-module IntcodeComputer where
+module IntcodeComputer (step, compile, run2halt, run2result, run2results)
+where
 
 import qualified Data.Sequence as S
 import           Data.Sequence (Seq (..))
@@ -27,16 +28,16 @@ step (p, inp, out, cs) = go (S.drop p cs)
 
 
     -- add and multiply
-    go (parse -> ([_,y,x,0,1], [a,b,c])) = (p + 4, inp, out, write c (mode x a + mode y b))
-    go (parse -> ([_,y,x,0,2], [a,b,c])) = (p + 4, inp, out, write c (mode x a * mode y b))
+    go (parse -> ([_,y,x,0,1], (a:b:c:_))) = (p + 4, inp, out, write c (mode x a + mode y b))
+    go (parse -> ([_,y,x,0,2], (a:b:c:_))) = (p + 4, inp, out, write c (mode x a * mode y b))
 
     -- jump instructions
     go (parse -> ([_,y,x,0,5], (a:b:_))) = (if mode x a /= 0 then mode y b else p + 3, inp, out, cs)
     go (parse -> ([_,y,x,0,6], (a:b:_))) = (if mode x a == 0 then mode y b else p + 3, inp, out, cs)
 
     -- comparisons
-    go (parse -> ([_,y,x,0,7], [a,b,c])) = (p + 4, inp, out, write c (if mode x a < mode y b then 1 else 0))
-    go (parse -> ([_,y,x,0,8], [a,b,c])) = (p + 4, inp, out, write c (if mode x a == mode y b then 1 else 0))
+    go (parse -> ([_,y,x,0,7], (a:b:c:_))) = (p + 4, inp, out, write c (if mode x a < mode y b then 1 else 0))
+    go (parse -> ([_,y,x,0,8], (a:b:c:_))) = (p + 4, inp, out, write c (if mode x a == mode y b then 1 else 0))
 
     -- halt if something goes wrong
     go _                                 = error $ "received invalid opcode: " ++ show (p, inp, out, cs)
@@ -52,10 +53,16 @@ step (p, inp, out, cs) = go (S.drop p cs)
     mode 1 a = a
 
 -- more or less the whole parsing logic
-parse (S.take 4 -> ((digits -> op) :<| ps)) = (op, toList ps)
+parse ((digits -> op) :<| ps) = (op, toList ps)
 
 -- split "int code" into seperate digits
-digits = map digitToInt . printf "%05d"
+digits z = [a,b,c,d,e]
+  where
+    (y,e) = z `divMod` 10
+    (x,d) = y `divMod` 10
+    (w,c) = x `divMod` 10
+    (v,b) = w `divMod` 10
+    (_,a) = v `divMod` 10
 
 
 -- | run a program until it has reached a 99 opcode (or just crashed)
